@@ -24,6 +24,9 @@ describe('rest create', () => {
     });
   });
 
+  // This test needs to be split into Parse Server portion
+  // and Mongo Adapter portion, but it's unclear if Date
+  // encoding/decoding should happen in Parse Server or the adapter.
   it('handles array, object, date', (done) => {
     let now = new Date();
     var obj = {

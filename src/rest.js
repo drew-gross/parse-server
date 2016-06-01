@@ -63,8 +63,8 @@ function del(config, auth, className, objectId) {
   }).then(() => {
     if (!auth.isMaster) {
       return auth.getUserRoles();
-    }else{
-      return Promise.resolve();
+    } else {
+      return;
     }
   }).then(() => {
     var options = {};
@@ -81,7 +81,7 @@ function del(config, auth, className, objectId) {
     }, options);
   }).then(() => {
     triggers.maybeRunTrigger(triggers.Types.afterDelete, auth, inflatedObject, null, config);
-    return Promise.resolve();
+    return;
   });
 }
 

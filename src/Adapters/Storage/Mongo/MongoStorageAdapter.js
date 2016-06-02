@@ -100,7 +100,10 @@ export class MongoStorageAdapter {
         return;
       }
       throw error;
-    });
+    })
+    // We've dropped the collection, now remove the _SCHEMA document
+    .then(() => this.schemaCollection())
+    .then(schemaCollection => schemaCollection.findAndDeleteSchema(className))
   }
 
   // Delete all data known to this adatper. Used for testing.

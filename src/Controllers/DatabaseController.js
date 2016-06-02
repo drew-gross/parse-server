@@ -688,17 +688,12 @@ DatabaseController.prototype.find = function(className, query, {
 
 DatabaseController.prototype.deleteSchema = function(className) {
   return this.collectionExists(className)
-  .then(exist => {
-    if (!exist) {
-      return Promise.resolve();
+  .then(exist => this.adapter.count(className))
+  .then(count => {
+    if (count > 0) {
+      throw new Parse.Error(255, `Class ${className} is not empty, contains ${count} objects, cannot drop schema.`);
     }
-    return this.adapter.count(className)
-    .then(count => {
-      if (count > 0) {
-        throw new Parse.Error(255, `Class ${className} is not empty, contains ${count} objects, cannot drop schema.`);
-      }
-      return this.adapter.deleteOneSchema(className);
-    })
+    return this.adapter.deleteOneSchema(className);
   });
 }
 

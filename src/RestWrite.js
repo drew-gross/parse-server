@@ -155,6 +155,7 @@ RestWrite.prototype.runBeforeTrigger = function() {
   }
 
   let originalObject = null;
+  console.log(this.data)
   let updatedObject = triggers.inflate(extraData, this.originalData);
   if (this.query && this.query.objectId) {
     // This is an update for existing object.
@@ -162,9 +163,8 @@ RestWrite.prototype.runBeforeTrigger = function() {
   }
   updatedObject.set(this.sanitizedData());
 
-  return Promise.resolve().then(() => {
-    return triggers.maybeRunTrigger(triggers.Types.beforeSave, this.auth, updatedObject, originalObject, this.config);
-  }).then((response) => {
+  return triggers.maybeRunTrigger(triggers.Types.beforeSave, this.auth, updatedObject, originalObject, this.config)
+  .then(response => {
     if (response && response.object) {
       if (!_.isEqual(this.data, response.object)) {
         this.storage.changedByTrigger = true;

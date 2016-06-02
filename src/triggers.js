@@ -131,8 +131,7 @@ export function getResponseObject(request, resolve, reject) {
   return {
     success: function(response) {
       // Use the JSON response
-      if (response && !request.object.equals(response)
-          && request.triggerName === Types.beforeSave) {
+      if (response && !request.object.equals(response) && request.triggerName === Types.beforeSave) {
         return resolve(response);
       }
       response = {};
@@ -174,8 +173,5 @@ export function maybeRunTrigger(triggerType, auth, parseObject, originalParseObj
 // data is either className or an object
 export function inflate(data, restObject) {
   var copy = typeof data == 'object' ? data : {className: data};
-  for (var key in restObject) {
-    copy[key] = restObject[key];
-  }
-  return Parse.Object.fromJSON(copy);
+  return Parse.Object.fromJSON({ ...copy, ...restObject });
 }

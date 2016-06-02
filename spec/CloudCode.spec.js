@@ -589,4 +589,28 @@ describe('Cloud Code', () => {
       done();
     });
   });
+
+  fit('treats dirty keys properly (regression test for #1882)', done => {
+    Parse.Cloud.beforeSave('Event', (request, response) => {
+      if (!request.object.isNew() && request.object.dirty('protectedKey')) {
+        response.error('protectedKey is protected');
+      } else {
+        response.success();
+      }
+    });
+
+    let obj = new Parse.Object('Event')
+    obj.save({ nonProtectedKey: 'value' })
+    .then(obj => obj.save({ protectedKey: 'value' }))
+    .catch(error => {
+      expect(error.message).toEqual('protectedKey is protected')
+      obj.unset('nonProtectedKey');
+      return obj.save({ otherNonProtectedKey: 'value' });
+    })
+    .then(done)
+    .catch(error => {
+      fail(error.message);
+      done();
+    });
+  });
 });

@@ -122,8 +122,8 @@ describe('miscellaneous', function() {
 
   it('ensure that if people already have duplicate users, they can still sign up new users', done => {
     let config = new Config('test');
-    config.database.adapter.createObject('_User', { objectId: 'x', username: 'u' }, requiredUserFields)
-    .then(() => config.database.adapter.createObject('_User', { objectId: 'y', username: 'u' }, requiredUserFields))
+    config.database.adapter.createObject('_User', requiredUserFields, { objectId: 'x', username: 'u' })
+    .then(() => config.database.adapter.createObject('_User', requiredUserFields, { objectId: 'y', username: 'u' }))
     .then(() => {
       let user = new Parse.User();
       user.setPassword('asdf');
@@ -148,8 +148,8 @@ describe('miscellaneous', function() {
 
   it('ensure that if people already have duplicate emails, they can still sign up new users', done => {
     let config = new Config('test');
-    config.database.adapter.createObject('_User', { objectId: 'x', email: 'a@b.c' }, requiredUserFields)
-    .then(() => config.database.adapter.createObject('_User', { objectId: 'y', email: 'a@b.c' }, requiredUserFields))
+    config.database.adapter.createObject('_User', requiredUserFields, { objectId: 'x', email: 'a@b.c' })
+    .then(() => config.database.adapter.createObject('_User', requiredUserFields, { objectId: 'y', email: 'a@b.c' }))
     .then(() => {
       let user = new Parse.User();
       user.setPassword('asdf');

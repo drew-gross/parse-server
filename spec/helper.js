@@ -94,7 +94,7 @@ var mongoAdapter = new MongoStorageAdapter({
 
 afterEach(function(done) {
   Parse.Cloud._removeAllHooks();
-  mongoAdapter.getAllSchemas()
+  mongoAdapter.getAllClasses()
   .then(allSchemas => {
     allSchemas.forEach((schema) => {
       var className = schema.className;

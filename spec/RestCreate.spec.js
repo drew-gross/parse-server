@@ -14,7 +14,7 @@ var database = DatabaseAdapter.getDatabaseConnection('test', 'test_');
 describe('rest create', () => {
   it('handles _id', done => {
     rest.create(config, auth.nobody(config), 'Foo', {})
-    .then(() => database.adapter.find('Foo', {}, { fields: {} }, {}))
+    .then(() => database.adapter.find('Foo', { fields: {} }, {}, {}))
     .then(results => {
       expect(results.length).toEqual(1);
       var obj = results[0];
@@ -32,11 +32,11 @@ describe('rest create', () => {
       date: Parse._encode(now),
     };
     rest.create(config, auth.nobody(config), 'MyClass', obj)
-    .then(() => database.adapter.find('MyClass', {}, { fields: {
+    .then(() => database.adapter.find('MyClass', { fields: {
       array: { type: 'Array' },
       object: { type: 'Object' },
       date: { type: 'Date' },
-    } }, {}))
+    } }, {}, {}))
     .then(results => {
       expect(results.length).toEqual(1);
       var mob = results[0];
@@ -51,7 +51,7 @@ describe('rest create', () => {
   it('handles object and subdocument', done => {
     let obj = { subdoc: {foo: 'bar', wu: 'tan'} };
     rest.create(config, auth.nobody(config), 'MyClass', obj)
-    .then(() => database.adapter.find('MyClass', {}, { fields: {} }, {}))
+    .then(() => database.adapter.find('MyClass', { fields: {} }, {}, {}))
     .then(results => {
       expect(results.length).toEqual(1);
       let mob = results[0];
@@ -62,7 +62,7 @@ describe('rest create', () => {
       let obj = { 'subdoc.wu': 'clan' };
       return rest.update(config, auth.nobody(config), 'MyClass', mob.objectId, obj)
     })
-    .then(() => database.adapter.find('MyClass', {}, { fields: {} }, {}))
+    .then(() => database.adapter.find('MyClass', { fields: {} }, {}, {}))
     .then(results => {
       expect(results.length).toEqual(1);
       let mob = results[0];
@@ -255,10 +255,10 @@ describe('rest create', () => {
       }
     };
     rest.create(config, auth.nobody(config), 'APointerDarkly', obj)
-    .then(() => database.adapter.find('APointerDarkly', {}, { fields: {
+    .then(() => database.adapter.find('APointerDarkly', { fields: {
       foo: { type: 'String' },
       aPointer: { type: 'Pointer', targetClass: 'JustThePointer' },
-    }}, {}))
+    }}, {}, {}))
     .then(results => {
       expect(results.length).toEqual(1);
       let output = results[0];

@@ -5,12 +5,11 @@
 var auth = require('../src/Auth');
 var cache = require('../src/cache');
 var Config = require('../src/Config');
-var DatabaseAdapter = require('../src/DatabaseAdapter');
 var Parse = require('parse/node').Parse;
 var rest = require('../src/rest');
 
 var config = new Config('test');
-let database = DatabaseAdapter.getDatabaseConnection('test', 'test_');
+let database = config.database;
 let defaultColumns = require('../src/Controllers/SchemaController').defaultColumns;
 
 const installationSchema = { fields: Object.assign({}, defaultColumns._Default, defaultColumns._Installation) };
@@ -24,7 +23,7 @@ describe('Installations', () => {
       'deviceType': device
     };
     rest.create(config, auth.nobody(config), '_Installation', input)
-    .then(() => database.adapter.find('_Installation', installationSchema, {}, {}))
+    .then(() => config.database.adapter.find('_Installation', installationSchema, {}, {}))
     .then(results => {
       expect(results.length).toEqual(1);
       var obj = results[0];
@@ -42,7 +41,7 @@ describe('Installations', () => {
       'deviceType': device
     };
     rest.create(config, auth.nobody(config), '_Installation', input)
-    .then(() => database.adapter.find('_Installation', installationSchema, {}, {}))
+    .then(() => config.database.adapter.find('_Installation', installationSchema, {}, {}))
     .then(results => {
       expect(results.length).toEqual(1);
       var obj = results[0];
@@ -60,7 +59,7 @@ describe('Installations', () => {
       'deviceType': device
     };
     rest.create(config, auth.nobody(config), '_Installation', input)
-    .then(() => database.adapter.find('_Installation', installationSchema, {}, {}))
+    .then(() => config.database.adapter.find('_Installation', installationSchema, {}, {}))
     .then(results => {
       expect(results.length).toEqual(1);
       var obj = results[0];

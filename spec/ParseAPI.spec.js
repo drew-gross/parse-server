@@ -346,8 +346,8 @@ describe('miscellaneous', function() {
       obj.set('foo', 'bar');
       return obj.save();
     }).then(() => {
-      var db = DatabaseAdapter.getDatabaseConnection(appId, 'test_');
-      return db.adapter.find('TestObject', { fields: {} }, {}, {});
+      let config = new Config(appId);
+      return config.database.adapter.find('TestObject', { fields: {} }, {}, {});
     }).then((results) => {
       expect(results.length).toEqual(1);
       expect(results[0]['foo']).toEqual('bar');

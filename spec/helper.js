@@ -59,7 +59,6 @@ const setServerConfiguration = configuration => {
   if (configuration === currentConfiguration) {
     return;
   }
-  DatabaseAdapter.clearDatabaseSettings();
   currentConfiguration = configuration;
   server.close();
   cache.clear();

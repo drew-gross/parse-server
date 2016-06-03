@@ -52,7 +52,10 @@ import { UserController }       from './Controllers/UserController';
 import { UsersRouter }          from './Routers/UsersRouter';
 
 import ParsePushAdapter         from 'parse-server-push-adapter';
-// Mutate the Parse object to add the Cloud Code handlers
+import MongoStorageAdapter      from './Adapters/Storage/Mongo/MongoStorageAdapter';
+import DatabaseController       from './Controllers/DatabaseController';
+
+// utate the Parse object to add the Cloud Code handlers
 addParseCloud();
 
 // ParseServer works like a constructor of an express app.
@@ -93,6 +96,7 @@ class ParseServer {
     logsFolder,
     databaseURI,
     databaseOptions,
+    databaseAdapter,
     cloud,
     collectionPrefix = '',
     clientKey,
@@ -127,17 +131,23 @@ class ParseServer {
     Parse.initialize(appId, javascriptKey || 'unused', masterKey);
     Parse.serverURL = serverURL;
 
+    if ((databaseOptions || databaseURI || collectionPrefix !== '') && databaseAdapter) {
+      throw 'You cannot specify both a databaseAdapter and a databaseURI/databaseOptions/connectionPrefix.';
+    } else if (!databaseAdapter) {
+      databaseAdapter = new MongoStorageAdapter({
+        uri: databaseURI,
+        collectionPrefix,
+        mongoOptions: databaseOptions,
+      });
+    } else {
+      databaseAdapter = loadAdapter(databaseAdapter)
+    }
+
     if (logsFolder) {
       configureLogger({
         logsFolder
       })
     }
-
-    if (databaseOptions) {
-      DatabaseAdapter.setAppDatabaseOptions(appId, databaseOptions);
-    }
-
-    DatabaseAdapter.setAppDatabaseURI(appId, databaseURI);
 
     if (cloud) {
       addParseCloud();
@@ -168,10 +178,11 @@ class ParseServer {
     const filesController = new FilesController(filesControllerAdapter, appId);
     const pushController = new PushController(pushControllerAdapter, appId);
     const loggerController = new LoggerController(loggerControllerAdapter, appId);
-    const hooksController = new HooksController(appId, collectionPrefix, webhookKey);
     const userController = new UserController(emailControllerAdapter, appId, { verifyUserEmails });
     const liveQueryController = new LiveQueryController(liveQuery);
     const cacheController = new CacheController(cacheControllerAdapter, appId);
+    const databaseController = new DatabaseController(databaseAdapter);
+    const hooksController = new HooksController(appId, databaseController, webhookKey);
 
     AppCache.put(appId, {
       masterKey: masterKey,
@@ -200,7 +211,8 @@ class ParseServer {
       liveQueryController: liveQueryController,
       sessionLength: Number(sessionLength),
       expireInactiveSessions: expireInactiveSessions,
-      revokeSessionOnPasswordReset
+      revokeSessionOnPasswordReset,
+      databaseController,
     });
 
     // To maintain compatibility. TODO: Remove in some version that breaks backwards compatability

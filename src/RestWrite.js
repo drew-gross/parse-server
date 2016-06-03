@@ -359,7 +359,7 @@ RestWrite.prototype.transformUser = function() {
       return;
     }
     // TODO: refactor this so that ensureUniqueness isn't called for every single sign up.
-    return this.config.database.adapter.ensureUniqueness('_User', ['username'], requiredUserFields)
+    return this.config.database.adapter.ensureUniqueness('_User', requiredUserFields, ['username'])
     .catch(error => {
       if (error.code === Parse.Error.DUPLICATE_VALUE) {
         // If they already have duplicate usernames or emails, the ensureUniqueness will fail,
@@ -388,7 +388,7 @@ RestWrite.prototype.transformUser = function() {
       throw new Parse.Error(Parse.Error.INVALID_EMAIL_ADDRESS, 'Email address format is invalid.');
     }
     // Check for email uniqueness
-    return this.config.database.adapter.ensureUniqueness('_User', ['email'], requiredUserFields)
+    return this.config.database.adapter.ensureUniqueness('_User', requiredUserFields, ['email'])
     .catch(error => {
       // Same problem for email as above for username
       if (error.code === Parse.Error.DUPLICATE_VALUE) {

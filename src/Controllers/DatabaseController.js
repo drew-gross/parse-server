@@ -667,7 +667,7 @@ DatabaseController.prototype.find = function(className, query, {
         }
         validateQuery(query);
         if (count) {
-          return this.adapter.count(className, query, schema);
+          return this.adapter.count(className, schema, query);
         } else {
           return this.adapter.find(className, schema, query, { skip, limit, sort })
           .then(objects => objects.map(object => filterSensitiveData(isMaster, aclGroup, className, object)));

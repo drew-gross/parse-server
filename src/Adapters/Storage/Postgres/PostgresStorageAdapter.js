@@ -155,7 +155,7 @@ export class PostgresStorageAdapter {
     return this._client.query('SELECT * FROM "_SCHEMA" WHERE "className"=$<className>', { className })
     .then(result => {
       if (result.length === 1) {
-        return result[0];
+        return result[0].schema;
       } else {
         throw undefined;
       }
@@ -166,11 +166,6 @@ export class PostgresStorageAdapter {
   createObject(className, schema, object) {
     let columnsArray = [];
     let valuesArray = [];
-    console.log('creating');
-    console.log(schema);
-    console.log(object);
-    console.log(className);
-    console.log(new Error().stack);
     Object.keys(object).forEach(fieldName => {
       columnsArray.push(fieldName);
       switch (schema.fields[fieldName].type) {

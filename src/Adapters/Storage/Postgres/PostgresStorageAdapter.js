@@ -2,6 +2,7 @@ const pgp = require('pg-promise')();
 
 const PostgresRelationDoesNotExistError = '42P01';
 const PostgresDuplicateRelationError = '42P07';
+const PostgresDuplicateColumnError = '42701';
 
 const parseTypeToPostgresType = type => {
   switch (type.type) {
@@ -20,6 +21,48 @@ const parseTypeToPostgresType = type => {
     default: throw `no type for ${JSON.stringify(type)} yet`;
   }
 };
+
+const buildWhereClause = ({ query, index }) => {
+  let patterns = [];
+  let values = [];
+  for (let fieldName in query) {
+    let fieldValue = query[fieldName];
+    if (typeof fieldValue === 'string') {
+      patterns.push(`$${index}:name = $${index + 1}`);
+      values.push(fieldName, fieldValue);
+      index += 2;
+    } else if (fieldValue.$ne) {
+      patterns.push(`$${index}:name <> $${index + 1}`);
+      values.push(fieldName, fieldValue.$ne);
+      index += 2;
+    } else if (Array.isArray(fieldValue.$in)) {
+      let inPatterns = [];
+      let allowNull = false;
+      values.push(fieldName);
+      fieldValue.$in.forEach((listElem, listIndex) => {
+        if (listElem === null ) {
+          allowNull = true;
+        } else {
+          values.push(listElem);
+          inPatterns.push(`$${index + 1 + listIndex - (allowNull ? 1 : 0)}`);
+        }
+      });
+      if (allowNull) {
+        patterns.push(`($${index}:name IS NULL OR $${index}:name && ARRAY[${inPatterns.join(',')}])`);
+      } else {
+        patterns.push(`$${index}:name && ARRAY[${inPatterns.join(',')}]`);
+      }
+      index = index + 1 + inPatterns.length;
+    } else if (fieldValue.__type === 'Pointer') {
+      patterns.push(`$${index}:name = $${index + 1}`);
+      values.push(fieldName, fieldValue.objectId);
+      index += 2;
+    } else {
+      return Promise.reject(new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, `Postgres doesn't support this query type yet`));
+    }
+  }
+  return { pattern: patterns.join(' AND '), values };
+}
 
 export class PostgresStorageAdapter {
   // Private
@@ -75,6 +118,9 @@ export class PostgresStorageAdapter {
     .catch(error => {
       if (error.code === PostgresRelationDoesNotExistError) {
         return this.createClass(className, { fields: { [fieldName]: type } })
+      } else if (error.code === PostgresDuplicateColumnError) {
+        // Column already exists, created by other request. Carry on to
+        // See if it's the right type.
       } else {
         throw error;
       }
@@ -181,8 +227,10 @@ export class PostgresStorageAdapter {
       }
     });
     let columnsPattern = columnsArray.map((col, index) => `$${index + 2}:name`).join(',');
-    let valuesPattern = valuesArray.map((val, index) => `$${index + 2 + columnsArray.length}`).join(',');
-    return this._client.query(`INSERT INTO $1:name (${columnsPattern}) VALUES (${valuesPattern})`, [className, ...columnsArray, ...valuesArray])
+    let valuesPattern = valuesArray.map((val, index) => `$${index + 2 + columnsArray.length}${(['_rperm','_wperm'].includes(columnsArray[index])) ? '::text[]' : ''}`).join(',');
+    let qs = `INSERT INTO $1:name (${columnsPattern}) VALUES (${valuesPattern})`
+    let values = [className, ...columnsArray, ...valuesArray]
+    return this._client.query(qs, values)
     .then(() => ({ ops: [object] }))
   }
 
@@ -209,9 +257,7 @@ export class PostgresStorageAdapter {
   findOneAndUpdate(className, schema, query, update) {
     let conditionPatterns = [];
     let updatePatterns = [];
-    let values = []
-    values.push(className);
-    let index = 2;
+    let values = [className]
 
     for (let fieldName in update) {
       let fieldValue = update[fieldName];
@@ -228,26 +274,10 @@ export class PostgresStorageAdapter {
       }
     }
 
-    for (let fieldName in query) {
-      let fieldValue = query[fieldName];
-      if (typeof fieldValue === 'string') {
-        conditionPatterns.push(`$${index}:name = $${index + 1}`);
-        values.push(fieldName, fieldValue);
-        index += 2;
-      } else if (Array.isArray(fieldValue.$in)) {
-        let inPatterns = [];
-        values.push(fieldName);
-        fieldValue.$in.forEach((listElem, listIndex) => {
-          values.push(listElem);
-          inPatterns.push(`$${index + 1 + listIndex}`);
-        });
-        conditionPatterns.push(`$${index}:name && ARRAY[${inPatterns.join(',')}]`);
-        index = index + 1 + inPatterns.length;
-      } else {
-        return Promise.reject(new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, `Postgres doesn't support this type of request yet`));
-      }
-    }
-    let qs = `UPDATE $1:name SET ${updatePatterns.join(',')} WHERE ${conditionPatterns.join(' AND ')} RETURNING *`;
+    let where = buildWhereClause({ index, query })
+    values.push(...where.values);
+
+    let qs = `UPDATE $1:name SET ${updatePatterns.join(',')} WHERE ${where.patten} RETURNING *`;
     return this._client.query(qs, values)
     .then(val => {
       return val[0];
@@ -259,42 +289,16 @@ export class PostgresStorageAdapter {
     return Promise.reject('Not implented yet.')
   }
 
-  // Executes a find. Accepts: className, query in Parse format, and { skip, limit, sort }.
   find(className, schema, query, { skip, limit, sort }) {
-    let conditionPatterns = [];
-    let values = [];
-    values.push(className);
-    let index = 2;
+    let values = [className];
+    let where = buildWhereClause({ query, index: 2 })
+    values.push(...where.values);
 
-    for (let fieldName in query) {
-      let fieldValue = query[fieldName];
-      if (typeof fieldValue === 'string') {
-        conditionPatterns.push(`$${index}:name = $${index + 1}`);
-        values.push(fieldName, fieldValue);
-        index += 2;
-      } else if (fieldValue.$ne) {
-        conditionPatterns.push(`$${index}:name <> $${index + 1}`);
-        values.push(fieldName, fieldValue.$ne)
-        index += 2;
-      } else if (Array.isArray(fieldValue.$in)) {
-        let inPatterns = [];
-        values.push(fieldName);
-        fieldValue.$in.forEach((listElem, listIndex) => {
-          values.push(listElem);
-          inPatterns.push(`$${index + 1 + listIndex}`);
-        });
-        conditionPatterns.push(`$${index}:name IN (${inPatterns.join(',')})`);
-        index = index + 1 + inPatterns.length;
-      } else if (fieldValue.__type === 'Pointer') {
-        conditionPatterns.push(`$${index}:name = $${index + 1}`);
-        values.push(fieldName, fieldValue.objectId);
-        index += 2;
-      } else {
-        return Promise.reject(new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, "Postgres doesn't support this query type yet"));
-      }
+    const qs = `SELECT * FROM $1:name WHERE ${where.pattern} ${limit !== undefined ? `LIMIT $${values.length + 1}` : ''}`;
+    if (limit !== undefined) {
+      values.push(limit);
     }
-
-    return this._client.query(`SELECT * FROM $1:name WHERE ${conditionPatterns.join(' AND ')}`, values)
+    return this._client.query(qs, values)
     .then(results => results.map(object => {
       Object.keys(schema.fields).filter(field => schema.fields[field].type === 'Pointer').forEach(fieldName => {
         object[fieldName] = { objectId: object[fieldName], __type: 'Pointer', className: schema.fields[fieldName].targetClass };

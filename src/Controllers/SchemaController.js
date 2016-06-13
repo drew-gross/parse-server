@@ -248,14 +248,14 @@ const convertAdapterSchemaToParseSchema = ({...schema}) => {
   return schema;
 }
 
-const injectDefaultSchema = schema => ({
-  className: schema.className,
+const injectDefaultSchema = ({className, fields, classLevelPermissions}) => ({
+  className,
   fields: {
     ...defaultColumns._Default,
-    ...(defaultColumns[schema.className] || {}),
-    ...schema.fields,
+    ...(defaultColumns[className] || {}),
+    ...fields,
   },
-  classLevelPermissions: schema.classLevelPermissions,
+  classLevelPermissions,
 })
 
 const dbTypeMatchesObjectType = (dbType, objectType) => {
@@ -313,7 +313,7 @@ class SchemaController {
       return Promise.resolve(this.data[className]);
     }
     return this._dbAdapter.getClass(className)
-    .then(injectDefaultSchema);
+    .then(injectDefaultSchema)
   }
 
   // Create a new class that includes the three default fields.

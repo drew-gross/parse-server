@@ -315,7 +315,7 @@ describe('miscellaneous', function() {
     });
   });
 
-  it('query with limit', function(done) {
+  fit('query with limit', function(done) {
     var baz = new TestObject({ foo: 'baz' });
     var qux = new TestObject({ foo: 'qux' });
     baz.save().then(() => {
@@ -328,7 +328,7 @@ describe('miscellaneous', function() {
       expect(results.length).toEqual(1);
       done();
     }, (error) => {
-      fail(error);
+      fail(JSON.stringify(error));
       done();
     });
   });

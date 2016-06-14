@@ -22,7 +22,7 @@ const parseTypeToPostgresType = type => {
   }
 };
 
-const buildWhereClause = ({ query, index }) => {
+const buildWhereClause = ({ schema, query, index }) => {
   let patterns = [];
   let values = [];
   for (let fieldName in query) {
@@ -35,7 +35,12 @@ const buildWhereClause = ({ query, index }) => {
       patterns.push(`$${index}:name <> $${index + 1}`);
       values.push(fieldName, fieldValue.$ne);
       index += 2;
-    } else if (Array.isArray(fieldValue.$in)) {
+    } else if (fieldName === '$or') {
+      fieldValue.map(subQuery => buildWhereClause({ schema, query: subQuery, index })).forEach(result => {
+        patterns.push(result.pattern);
+        values.push(...result.values);
+      });
+    } else if (Array.isArray(fieldValue.$in) && schema.fields[fieldName].type === 'Array') {
       let inPatterns = [];
       let allowNull = false;
       values.push(fieldName);
@@ -53,12 +58,21 @@ const buildWhereClause = ({ query, index }) => {
         patterns.push(`$${index}:name && ARRAY[${inPatterns.join(',')}]`);
       }
       index = index + 1 + inPatterns.length;
+    } else if (Array.isArray(fieldValue.$in) && schema.fields[fieldName].type === 'String') {
+      let inPatterns = [];
+      values.push(fieldName);
+      fieldValue.$in.forEach((listElem, listIndex) => {
+        values.push(listElem);
+        inPatterns.push(`$${index + 1 + listIndex}`);
+      });
+      patterns.push(`$${index}:name IN (${inPatterns.join(',')})`);
+      index = index + 1 + inPatterns.length;
     } else if (fieldValue.__type === 'Pointer') {
       patterns.push(`$${index}:name = $${index + 1}`);
       values.push(fieldName, fieldValue.objectId);
       index += 2;
     } else {
-      return Promise.reject(new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, `Postgres doesn't support this query type yet`));
+      throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, `Postgres doesn't support this query type yet`);
     }
   }
   return { pattern: patterns.join(' AND '), values };
@@ -125,7 +139,7 @@ export class PostgresStorageAdapter {
         throw error;
       }
     })
-    .then(() => this._client.query('SELECT "schema" FROM "_SCHEMA"', { className }))
+    .then(() => this._client.query('SELECT "schema" FROM "_SCHEMA" WHERE "className" = $className', { className }))
     .then(result => {
       if (fieldName in result[0].schema) {
         throw "Attempted to add a field that already exists";
@@ -274,7 +288,7 @@ export class PostgresStorageAdapter {
       }
     }
 
-    let where = buildWhereClause({ index, query })
+    let where = buildWhereClause({ schema, index, query })
     values.push(...where.values);
 
     let qs = `UPDATE $1:name SET ${updatePatterns.join(',')} WHERE ${where.patten} RETURNING *`;
@@ -291,7 +305,7 @@ export class PostgresStorageAdapter {
 
   find(className, schema, query, { skip, limit, sort }) {
     let values = [className];
-    let where = buildWhereClause({ query, index: 2 })
+    let where = buildWhereClause({ schema, query, index: 2 })
     values.push(...where.values);
 
     const qs = `SELECT * FROM $1:name WHERE ${where.pattern} ${limit !== undefined ? `LIMIT $${values.length + 1}` : ''}`;

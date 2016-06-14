@@ -525,7 +525,7 @@ class SchemaController {
         // condition where another client updated the schema in the same
         // way that we wanted to. So, just reload the schema
         return this.reloadData();
-      }).then(() => {
+      }).then(error => {
         // Ensure that the schema now validates
         if (!dbTypeMatchesObjectType(this.getExpectedType(className, fieldName), type)) {
           throw new Parse.Error(Parse.Error.INVALID_JSON, `Could not add field ${fieldName}`);
@@ -605,7 +605,8 @@ class SchemaController {
         // Every object has ACL implicitly.
         continue;
       }
-      promise = thenValidateField(promise, className, fieldName, expected);
+
+      promise = promise.then(schema => schema.enforceFieldExists(className, fieldName, expected));
     }
     promise = thenValidateRequiredColumns(promise, className, object, query);
     return promise;
@@ -735,14 +736,6 @@ function buildMergedSchemaObject(existingFields, putRequest) {
     }
   }
   return newSchema;
-}
-
-// Given a schema promise, construct another schema promise that
-// validates this field once the schema loads.
-function thenValidateField(schemaPromise, className, key, type) {
-  return schemaPromise.then((schema) => {
-    return schema.enforceFieldExists(className, key, type);
-  });
 }
 
 // Given a schema promise, construct another schema promise that

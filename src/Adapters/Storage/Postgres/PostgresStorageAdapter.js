@@ -17,7 +17,7 @@ const parseTypeToPostgresType = type => {
       if (type.contents && type.contents.type === 'String') {
         return 'text[]';
       } else {
-        throw `no type for ${JSON.stringify(type)} yet`;
+        return 'jsonb';
       }
     default: throw `no type for ${JSON.stringify(type)} yet`;
   }
@@ -244,8 +244,17 @@ export class PostgresStorageAdapter {
         case 'Pointer':
           valuesArray.push(object[fieldName].objectId);
           break;
-        default:
+        case 'Array':
+          valuesArray.push(JSON.stringify(object[fieldName]));
+          break;
+        case 'Object':
           valuesArray.push(object[fieldName]);
+          break;
+        case 'String':
+          valuesArray.push(object[fieldName]);
+          break;
+        default:
+          throw `Type ${schema.fields[fieldName].type} not supported yet`;
           break;
       }
     });
@@ -348,6 +357,9 @@ export class PostgresStorageAdapter {
       for (let fieldName in object) {
         if (object[fieldName] === null) {
           delete object[fieldName];
+        }
+        if (object[fieldName] instanceof Date) {
+          object[fieldName] = { __type: 'Date', iso: object[fieldName].toISOString() };
         }
       }
 

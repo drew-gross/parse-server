@@ -245,7 +245,11 @@ export class PostgresStorageAdapter {
           valuesArray.push(object[fieldName].objectId);
           break;
         case 'Array':
-          valuesArray.push(JSON.stringify(object[fieldName]));
+          if (['_rperm', '_wperm'].includes(fieldName)) {
+            valuesArray.push(object[fieldName]);
+          } else {
+            valuesArray.push(JSON.stringify(object[fieldName]));
+          }
           break;
         case 'Object':
           valuesArray.push(object[fieldName]);
@@ -254,6 +258,9 @@ export class PostgresStorageAdapter {
           valuesArray.push(object[fieldName]);
           break;
         case 'Number':
+          valuesArray.push(object[fieldName]);
+          break;
+        case 'Boolean':
           valuesArray.push(object[fieldName]);
           break;
         default:
@@ -382,6 +389,13 @@ export class PostgresStorageAdapter {
     const constraintPatterns = fieldNames.map((fieldName, index) => `$${index + 3}:name`);
     const qs = `ALTER TABLE $1:name ADD CONSTRAINT $2:name UNIQUE (${constraintPatterns.join(',')})`;
     return this._client.query(qs,[className, constraintName, ...fieldNames])
+    .catch(error => {
+      if (error.code === PostgresDuplicateRelationError && error.message.includes(constraintName)) {
+        // Index already exists. Ignore error.
+      } else {
+        throw error;
+      }
+    });
   }
 
   // Executs a count.

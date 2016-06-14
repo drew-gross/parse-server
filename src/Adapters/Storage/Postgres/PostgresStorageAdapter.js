@@ -253,6 +253,9 @@ export class PostgresStorageAdapter {
         case 'String':
           valuesArray.push(object[fieldName]);
           break;
+        case 'Number':
+          valuesArray.push(object[fieldName]);
+          break;
         default:
           throw `Type ${schema.fields[fieldName].type} not supported yet`;
           break;

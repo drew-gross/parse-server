@@ -29,7 +29,6 @@ const defaultColumns = Object.freeze({
   _User: {
     "username":      {type:'String'},
     "password":      {type:'String'},
-    "authData":      {type:'Object'},
     "email":         {type:'String'},
     "emailVerified": {type:'Boolean'},
   },
@@ -241,6 +240,7 @@ const convertAdapterSchemaToParseSchema = ({...schema}) => {
   schema.fields.ACL = { type: 'ACL' };
 
   if (schema.className === '_User') {
+    delete schema.fields.authData; //Auth data is implicit
     delete schema.fields._hashed_password;
     schema.fields.password = { type: 'String' };
   }

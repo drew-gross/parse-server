@@ -139,7 +139,7 @@ export class PostgresStorageAdapter {
         throw error;
       }
     })
-    .then(() => this._client.query('SELECT "schema" FROM "_SCHEMA" WHERE "className" = $className', { className }))
+    .then(() => this._client.query('SELECT "schema" FROM "_SCHEMA" WHERE "className" = $<className>', { className }))
     .then(result => {
       if (fieldName in result[0].schema) {
         throw "Attempted to add a field that already exists";
@@ -344,7 +344,12 @@ export class PostgresStorageAdapter {
   // Way of determining if a field is nullable. Undefined doesn't count against uniqueness,
   // which is why we use sparse indexes.
   ensureUniqueness(className, schema, fieldNames) {
-    return Promise.resolve('ensureUniqueness not implented yet.')
+    // Use the same name for every ensureUniqueness attempt, because postgres
+    // Will happily create the same index with multiple names.
+    const constraintName = `unique_${fieldNames.sort().join('_')}`;
+    const constraintPatterns = fieldNames.map((fieldName, index) => `$${index + 3}:name`);
+    const qs = `ALTER TABLE $1:name ADD CONSTRAINT $2:name UNIQUE (${constraintPatterns.join(',')})`;
+    return this._client.query(qs,[className, constraintName, ...fieldNames])
   }
 
   // Executs a count.

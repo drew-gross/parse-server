@@ -122,7 +122,15 @@ export class PostgresStorageAdapter {
       valuesArray.push(parseTypeToPostgresType(parseType));
       patternsArray.push(`$${index * 2 + 2}:name $${index * 2 + 3}:raw`);
     });
-    return this._client.query(`CREATE TABLE $1:name (${patternsArray.join(',')})`, [className, ...valuesArray])
+    return this._ensureSchemaCollectionExists()
+    .then(() => this._client.query(`CREATE TABLE $1:name (${patternsArray.join(',')})`, [className, ...valuesArray]))
+    .catch(error => {
+      if (error.code === PostgresDuplicateRelationError) {
+        // Table already exists, must have been created by a different request. Ignore error.
+      } else {
+        throw error;
+      }
+    })
     .then(() => this._client.query('INSERT INTO "_SCHEMA" ("className", "schema", "isParseClass") VALUES ($<className>, $<schema>, true)', { className, schema }))
   }
 

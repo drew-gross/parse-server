@@ -7,10 +7,10 @@ const MongoStorageAdapter = require('../src/Adapters/Storage/Mongo/MongoStorageA
 var request = require('request');
 const Parse = require("parse/node");
 let Config = require('../src/Config');
-let defaultColumns = require('../src/Controllers/SchemaController').defaultColumns;
+const SchemaController = require('../src/Controllers/SchemaController');
 var TestUtils = require('../src/index').TestUtils;
 
-const requiredUserFields = { fields: Object.assign({}, defaultColumns._Default, defaultColumns._User) };
+const userSchema = SchemaController.convertSchemaToAdapterSchema({ className: '_User', fields: Object.assign({}, SchemaController.defaultColumns._Default, SchemaController.defaultColumns._User) });
 
 describe('miscellaneous', function() {
   it('create a GameScore object', function(done) {
@@ -130,23 +130,26 @@ describe('miscellaneous', function() {
     let config = new Config('test');
     // Remove existing data to clear out unique index
     TestUtils.destroyAllDataPermanently()
-    .then(() => config.database.adapter.createObject('_User', requiredUserFields, { objectId: 'x', username: 'u' }))
-    .then(() => config.database.adapter.createObject('_User', requiredUserFields, { objectId: 'y', username: 'u' }))
+    .then(() => config.database.adapter.createClass('_User', userSchema))
+    .then(() => config.database.adapter.createObject('_User', userSchema, { objectId: 'x', username: 'u' }).catch(fail))
+    .then(() => config.database.adapter.createObject('_User', userSchema, { objectId: 'y', username: 'u' }).catch(fail))
     // Create a new server to try to recreate the unique indexes
     .then(reconfigureServer)
     .catch(() => {
       let user = new Parse.User();
       user.setPassword('asdf');
       user.setUsername('zxcv');
-      // Sign up with new email still works
       return user.signUp().catch(fail);
     })
     .then(() => {
       let user = new Parse.User();
       user.setPassword('asdf');
       user.setUsername('u');
-      // sign up with duplicate username doens't
       return user.signUp()
+    })
+    .then(result => {
+      fail('should not have been able to sign up');
+      done();
     })
     .catch(error => {
       expect(error.code).toEqual(Parse.Error.USERNAME_TAKEN);
@@ -158,8 +161,8 @@ describe('miscellaneous', function() {
     let config = new Config('test');
     // Remove existing data to clear out unique index
     TestUtils.destroyAllDataPermanently()
-    .then(() => config.database.adapter.createObject('_User', requiredUserFields, { objectId: 'x', email: 'a@b.c' }))
-    .then(() => config.database.adapter.createObject('_User', requiredUserFields, { objectId: 'y', email: 'a@b.c' }))
+    .then(() => config.database.adapter.createObject('_User', userSchema, { objectId: 'x', email: 'a@b.c' }))
+    .then(() => config.database.adapter.createObject('_User', userSchema, { objectId: 'y', email: 'a@b.c' }))
     .then(reconfigureServer)
     .catch(() => {
       let user = new Parse.User();
@@ -183,7 +186,7 @@ describe('miscellaneous', function() {
 
   it('ensure that if you try to sign up a user with a unique username and email, but duplicates in some other field that has a uniqueness constraint, you get a regular duplicate value error', done => {
     let config = new Config('test');
-    config.database.adapter.ensureUniqueness('_User', requiredUserFields, ['randomField'])
+    config.database.adapter.ensureUniqueness('_User', userSchema, ['randomField'])
     .then(() => {
       let user = new Parse.User();
       user.setPassword('asdf');
@@ -210,8 +213,8 @@ describe('miscellaneous', function() {
     let config = new Config('test');
     // Remove existing data to clear out unique index
     TestUtils.destroyAllDataPermanently()
-    .then(() => config.database.adapter.createObject('_User', requiredUserFields, { objectId: 'x', email: 'a@b.c' }))
-    .then(() => config.database.adapter.createObject('_User', requiredUserFields, { objectId: 'y', email: 'a@b.c' }))
+    .then(() => config.database.adapter.createObject('_User', userSchema, { objectId: 'x', email: 'a@b.c' }))
+    .then(() => config.database.adapter.createObject('_User', userSchema, { objectId: 'y', email: 'a@b.c' }))
     .then(reconfigureServer)
     .catch(() => {
       let user = new Parse.User();
@@ -235,7 +238,7 @@ describe('miscellaneous', function() {
 
   it('ensure that if you try to sign up a user with a unique username and email, but duplicates in some other field that has a uniqueness constraint, you get a regular duplicate value error', done => {
     let config = new Config('test');
-    config.database.adapter.ensureUniqueness('_User', requiredUserFields, ['randomField'])
+    config.database.adapter.ensureUniqueness('_User', userSchema, ['randomField'])
     .then(() => {
       let user = new Parse.User();
       user.setPassword('asdf');

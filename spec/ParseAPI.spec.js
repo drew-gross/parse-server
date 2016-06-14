@@ -9,6 +9,7 @@ const Parse = require("parse/node");
 let Config = require('../src/Config');
 const SchemaController = require('../src/Controllers/SchemaController');
 var TestUtils = require('../src/index').TestUtils;
+const deepcopy = require('deepcopy');
 
 const userSchema = SchemaController.convertSchemaToAdapterSchema({ className: '_User', fields: Object.assign({}, SchemaController.defaultColumns._Default, SchemaController.defaultColumns._User) });
 
@@ -161,6 +162,7 @@ describe('miscellaneous', function() {
     let config = new Config('test');
     // Remove existing data to clear out unique index
     TestUtils.destroyAllDataPermanently()
+    .then(() => config.database.adapter.createClass('_User', userSchema))
     .then(() => config.database.adapter.createObject('_User', userSchema, { objectId: 'x', email: 'a@b.c' }))
     .then(() => config.database.adapter.createObject('_User', userSchema, { objectId: 'y', email: 'a@b.c' }))
     .then(reconfigureServer)
@@ -186,7 +188,8 @@ describe('miscellaneous', function() {
 
   it('ensure that if you try to sign up a user with a unique username and email, but duplicates in some other field that has a uniqueness constraint, you get a regular duplicate value error', done => {
     let config = new Config('test');
-    config.database.adapter.ensureUniqueness('_User', userSchema, ['randomField'])
+    config.database.adapter.addFieldIfNotExists('_User', 'randomField', { type: 'String' })
+    .then(() => config.database.adapter.ensureUniqueness('_User', userSchema, ['randomField']))
     .then(() => {
       let user = new Parse.User();
       user.setPassword('asdf');

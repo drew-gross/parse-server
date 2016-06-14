@@ -3,6 +3,7 @@ const pgp = require('pg-promise')();
 const PostgresRelationDoesNotExistError = '42P01';
 const PostgresDuplicateRelationError = '42P07';
 const PostgresDuplicateColumnError = '42701';
+const PostgresUniqueIndexViolationError = '23505';
 
 const parseTypeToPostgresType = type => {
   switch (type.type) {
@@ -254,6 +255,13 @@ export class PostgresStorageAdapter {
     let values = [className, ...columnsArray, ...valuesArray]
     return this._client.query(qs, values)
     .then(() => ({ ops: [object] }))
+    .catch(error => {
+      if (error.code === PostgresUniqueIndexViolationError) {
+        throw new Parse.Error(Parse.Error.DUPLICATE_VALUE, 'A duplicate value for a field with unique values was provided');
+      } else {
+        throw error;
+      }
+    })
   }
 
   // Remove all objects that match the given Parse Query.

@@ -319,8 +319,12 @@ export class PostgresStorageAdapter {
         updatePatterns.push(`$${index}:name = $${index + 1}`)
         values.push(fieldName, new Date(fieldValue));
         index += 2;
+      } else if (typeof fieldValue === 'string') {
+        updatePatterns.push(`$${index}:name = $${index + 1}`);
+        values.push(fieldName, fieldValue);
+        index += 2;
       } else {
-        return Promise.reject(new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, `Postgres doesn't support this type of update yet`));
+        return Promise.reject(new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, `Postgres doesn't support ${fieldValue} yet`));
       }
     }
 

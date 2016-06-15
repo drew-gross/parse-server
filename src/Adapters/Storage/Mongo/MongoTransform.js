@@ -250,11 +250,6 @@ const parseObjectKeyValueToMongoObjectKeyValue = (restKey, restValue, schema) =>
     return {key: restKey, value: value};
   }
 
-  // Handle update operators. TODO: handle within Parse Server. DB adapter shouldn't see update operators in creates.
-  if (typeof restValue === 'object' && '__op' in restValue) {
-    return {key: restKey, value: transformUpdateOperator(restValue, true)};
-  }
-
   // Handle normal objects by recursing
   if (Object.keys(restValue).some(key => key.includes('$') || key.includes('.'))) {
     throw new Parse.Error(Parse.Error.INVALID_NESTED_KEY, "Nested keys should not contain the '$' or '.' characters");

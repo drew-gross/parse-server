@@ -315,6 +315,14 @@ export class PostgresStorageAdapter {
         updatePatterns.push(`$${index}:name = COALESCE($${index}:name, 0) + $${index + 1}`);
         values.push(fieldName, fieldValue.amount);
         index += 2;
+      } else if (fieldValue.__op === 'Add') {
+        updatePatterns.push(`$${index}:name = COALESCE($${index}:name, '[]'::jsonb) || $${index + 1}`);
+        values.push(fieldName, fieldValue.objects);
+        index += 2;
+      } else if (fieldValue.__op === 'Remove') {
+        return Promise.reject(new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, 'Postgres does not support Remove operator.'));
+      } else if (fieldValue.__op === 'AddUnique') {
+        return Promise.reject(new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, 'Postgres does not support AddUnique operator'));
       } else if (fieldName === 'updatedAt') { //TODO: stop special casing this. It should check for __type === 'Date' and use .iso
         updatePatterns.push(`$${index}:name = $${index + 1}`)
         values.push(fieldName, new Date(fieldValue));
@@ -324,7 +332,7 @@ export class PostgresStorageAdapter {
         values.push(fieldName, fieldValue);
         index += 2;
       } else {
-        return Promise.reject(new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, `Postgres doesn't support ${fieldValue} yet`));
+        return Promise.reject(new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, `Postgres doesn't support update ${JSON.stringify(fieldValue)} yet`));
       }
     }
 

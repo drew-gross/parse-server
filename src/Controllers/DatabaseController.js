@@ -393,6 +393,44 @@ DatabaseController.prototype.destroy = function(className, query, { acl } = {}) 
   });
 };
 
+const flattenUpdateOperatorsForCreate = object => {
+  for (let key in object) {
+    if (object[key] && object[key].__op) {
+      switch (object[key].__op) {
+        case 'Increment':
+          if (typeof object[key].amount !== 'number') {
+            throw new Parse.Error(Parse.Error.INVALID_JSON, 'objects to add must be an array');
+          }
+          object[key] = object[key].amount;
+          break;
+        case 'Add':
+          if (!(object[key].objects instanceof Array)) {
+            throw new Parse.Error(Parse.Error.INVALID_JSON, 'objects to add must be an array');
+          }
+          object[key] = object[key].objects;
+          break;
+        case 'AddUnique':
+          if (!(object[key].objects instanceof Array)) {
+            throw new Parse.Error(Parse.Error.INVALID_JSON, 'objects to add must be an array');
+          }
+          object[key] = object[key].objects;
+          break;
+        case 'Remove':
+          if (!(object[key].objects instanceof Array)) {
+            throw new Parse.Error(Parse.Error.INVALID_JSON, 'objects to add must be an array');
+          }
+          object[key] = []
+          break;
+        case 'Delete':
+          delete object[key];
+          break;
+        default:
+          throw new Parse.Error(Parse.Error.COMMAND_UNAVAILABLE, `The ${object[key].__op} operator is not supported yet.`);
+      }
+    }
+  }
+}
+
 // Inserts an object into the database.
 // Returns a promise that resolves successfully iff the object saved.
 DatabaseController.prototype.create = function(className, object, { acl } = {}) {
@@ -414,7 +452,10 @@ DatabaseController.prototype.create = function(className, object, { acl } = {}) 
     .then(() => schemaController.enforceClassExists(className))
     .then(() => schemaController.reloadData())
     .then(() => schemaController.getOneSchema(className, true))
-    .then(schema => this.adapter.createObject(className, SchemaController.convertSchemaToAdapterSchema(schema), object))
+    .then(schema => {
+      flattenUpdateOperatorsForCreate(object);
+      return this.adapter.createObject(className, SchemaController.convertSchemaToAdapterSchema(schema), object);
+    })
     .then(result => sanitizeDatabaseResult(originalObject, result.ops[0]));
   })
 };

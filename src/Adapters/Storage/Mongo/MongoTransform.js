@@ -259,9 +259,6 @@ const parseObjectKeyValueToMongoObjectKeyValue = (restKey, restValue, schema) =>
 }
 
 const parseObjectToMongoObjectForCreate = (className, restCreate, schema) => {
-  if (className == '_User') {
-     restCreate = transformAuthData(restCreate);
-  }
   restCreate = addLegacyACL(restCreate);
   let mongoCreate = {}
   for (let restKey in restCreate) {

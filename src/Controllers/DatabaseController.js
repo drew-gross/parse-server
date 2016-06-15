@@ -431,6 +431,24 @@ const flattenUpdateOperatorsForCreate = object => {
   }
 }
 
+const transformAuthData = (className, object, schema) => {
+  if (object.authData && className === '_User') {
+    Object.keys(object.authData).forEach(provider => {
+      const providerData = object.authData[provider];
+      const fieldName = `_auth_data_${provider}`;
+      if (providerData == null) {
+        object[fieldName] = {
+          __op: 'Delete'
+        }
+      } else {
+        object[fieldName] = providerData;
+        schema.fields[fieldName] = { type: 'Object' }
+      }
+    });
+    delete object.authData;
+  }
+}
+
 // Inserts an object into the database.
 // Returns a promise that resolves successfully iff the object saved.
 DatabaseController.prototype.create = function(className, object, { acl } = {}) {
@@ -453,6 +471,7 @@ DatabaseController.prototype.create = function(className, object, { acl } = {}) 
     .then(() => schemaController.reloadData())
     .then(() => schemaController.getOneSchema(className, true))
     .then(schema => {
+      transformAuthData(className, object, schema);
       flattenUpdateOperatorsForCreate(object);
       return this.adapter.createObject(className, SchemaController.convertSchemaToAdapterSchema(schema), object);
     })

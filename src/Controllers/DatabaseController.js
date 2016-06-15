@@ -232,6 +232,7 @@ DatabaseController.prototype.update = function(className, query, update, {
           }
         }
         update = transformObjectACL(update);
+        transformAuthData(className, update, schema);
         if (many) {
           return this.adapter.updateObjectsByQuery(className, schema, query, update);
         } else if (upsert) {

@@ -287,10 +287,6 @@ const parseObjectToMongoObjectForCreate = (className, restCreate, schema) => {
 
 // Main exposed method to help update old objects.
 const transformUpdate = (className, restUpdate, parseFormatSchema) => {
-  if (className == '_User') {
-    restUpdate = transformAuthData(restUpdate);
-  }
-
   let mongoUpdate = {};
   let acl = addLegacyACL(restUpdate)._acl;
   if (acl) {
@@ -321,23 +317,6 @@ const transformUpdate = (className, restUpdate, parseFormatSchema) => {
   }
 
   return mongoUpdate;
-}
-
-function transformAuthData(restObject) {
-  if (restObject.authData) {
-    Object.keys(restObject.authData).forEach((provider) => {
-      let providerData = restObject.authData[provider];
-      if (providerData == null) {
-        restObject[`_auth_data_${provider}`] = {
-          __op: 'Delete'
-        }
-      } else {
-        restObject[`_auth_data_${provider}`] = providerData;
-      }
-    });
-    delete restObject.authData;
-  }
-  return restObject;
 }
 
 // Add the legacy _acl format.

@@ -325,11 +325,11 @@ global.range = range;
 global.reconfigureServer = reconfigureServer;
 global.defaultConfiguration = defaultConfiguration;
 
-global.it_exclude_dbs = dbs => {
-  if (dbs.includes(process.env.PARSE_SERVER_TEST_DB)) {
-    return it;
-  } else {
+global.it_exclude_dbs = excluded => {
+  if (excluded.includes(process.env.PARSE_SERVER_TEST_DB)) {
     return notWorking;
+  } else {
+    return it;
   }
 }
 

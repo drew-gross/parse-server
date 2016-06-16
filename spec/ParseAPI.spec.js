@@ -136,7 +136,8 @@ describe('miscellaneous', function() {
     .then(() => config.database.adapter.createObject('_User', userSchema, { objectId: 'y', username: 'u' }).catch(fail))
     // Create a new server to try to recreate the unique indexes
     .then(reconfigureServer)
-    .catch(() => {
+    .catch(error => {
+      expect(error.code).toEqual(Parse.Error.DUPLICATE_VALUE);
       let user = new Parse.User();
       user.setPassword('asdf');
       user.setUsername('zxcv');
